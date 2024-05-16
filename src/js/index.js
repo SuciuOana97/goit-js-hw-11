@@ -1,6 +1,6 @@
 import { BASE_URL, options } from './pixabay-api.js';
 import axios from 'axios';
-import { Notify } from 'notiflix/build/notiflix-notify-aio.js';
+import { Notify } from 'notiflix/build/notiflix-notify-aio';
 import simpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
 
@@ -86,7 +86,9 @@ async function handleSubmit(e) {
     const { hits } = res.data;
 
     if (hits.length === 0) {
-      Notify.failure('Sorry, there are no images matching your search query');
+      Notify.failure(
+        "We're sorry, but you've reached the end of search results."
+      );
     } else {
       Notify.success(`Hooray! We found ${totalHits} images`);
       renderGallery(hits);
