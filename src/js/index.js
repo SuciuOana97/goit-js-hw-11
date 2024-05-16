@@ -61,7 +61,7 @@ function renderGallery(hits) {
   if (options.params.page * options.params.per_page >= totalHits) {
     if (!reachEnd) {
       Notify.info(
-        "We are sorry but you've reached the end of the search result"
+        "We're sorry, but you've reached the end of the search result."
       );
       reachEnd = true;
     }
@@ -87,7 +87,7 @@ async function handleSubmit(e) {
 
     if (hits.length === 0) {
       Notify.failure(
-        "We're sorry, but you've reached the end of search results."
+        'Sorry, there are no images matching your search query. Plwase try again.'
       );
     } else {
       Notify.success(`Hooray! We found ${totalHits} images`);
