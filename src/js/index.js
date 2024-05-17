@@ -1,122 +1,106 @@
-import { BASE_URL, options } from './pixabay-api.js';
-import axios from 'axios';
-import { Notify } from 'notiflix/build/notiflix-notify-aio.js';
-import simpleLightbox from 'simplelightbox';
+import Notiflix from 'notiflix';
+import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
+import axios from 'axios';
+const apiKey = '26682637-dbd8b52f010b530b6481286b3';
+const BASE_URL = 'https://pixabay.com/api/';
+const form = document.getElementById('search-form');
+const gallery = document.getElementById('gallery');
+const loader = document.getElementById('loader');
+const error = document.getElementById('error');
+const loadMoreBtn = document.getElementById('load-more');
 
-const galleryEl = document.querySelector('.gallery');
-const searchInputEl = document.querySelector('input[name="searchQuery"]');
-const searchFormEl = document.getElementById('search-form');
+let page = 1;
 
-let reachEnd = false;
-let totalHits = 0;
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const searchQuery = form.searchQuery.value.trim();
+  if (searchQuery === '') return;
 
-const lightbox = new simpleLightbox('.lightbox', {
-  captionsData: 'alt',
-  captionsDelay: 250,
+  page = 1;
+  gallery.innerHTML = '';
+  searchImages(searchQuery);
 });
 
-function renderGallery(hits) {
-  let markup = hits
-    .map(
-      ({
-        webformatURL,
-        largeImageURL,
-        tags,
-        likes,
-        views,
-        comments,
-        downloads,
-      }) => {
-        return `<a href="${largeImageURL}" class="lightbox">
-            <div class="photo-card">
-        <img src="${webformatURL}" alt="${tags}" loading="lazy" />
-        <div class="info">
-            <p class="info-item">
-            
-            <b>Likes</b>
-            ${likes}
-            </p>
-            <p class="info-item">
-            <b>Views</b>
-            ${views}
-            </p>
-            <p class="info-item">
-            <b>Comments</b>
-            ${comments}
-            </p>
-            <p class="info-item">
-            <b>Downloads</b>
-            ${downloads}
-            </p>
-        </div>
-        </div>
-    </a>`;
-      }
-    )
-    .join('');
+loadMoreBtn.addEventListener('click', () => {
+  const searchQuery = form.searchQuery.value.trim();
+  if (searchQuery === '') return;
 
-  galleryEl.insertAdjacentHTML('beforeend', markup);
+  page++;
+  searchImages(searchQuery);
+});
 
-  if (options.params.page * options.params.per_page >= totalHits) {
-    if (!reachEnd) {
-      Notify.info(
-        "We're sorry, but you've reached the end of the search result."
-      );
-      reachEnd = true;
-    }
-  }
-  lightbox.refresh();
-}
-
-async function handleSubmit(e) {
-  e.preventDefault();
-
-  options.params.q = searchInputEl.value.trim();
-
-  if (options.params.q === '') return;
-  options.params.page = 1;
-  galleryEl.innerHTML = '';
-  reachEnd = false;
-
+async function searchImages(query) {
   try {
-    const res = await axios.get(BASE_URL, options);
-    totalHits = res.data.totalHits;
-
-    const { hits } = res.data;
-
-    if (hits.length === 0) {
-      Notify.failure(
-        'Sorry, there are no images matching your search query. Plwase try again.'
-      );
+    loader.style.display = 'block';
+    const response = await axios.get(baseURL, {
+      params: {
+        key: apiKey,
+        q: query,
+        image_type: 'photo',
+        orientation: 'horizontal',
+        safesearch: true,
+        per_page: 40, // 40 images per page
+        page: page,
+      },
+    });
+    const { data } = response;
+    if (data.totalHits === 0) {
+      error.style.display = 'block';
+      error.textContent = `Sorry, there are no images matching your search query. Please try again.`;
+      return;
+    }
+    if (page === 1) {
+      Notiflix.Notify.success(`Hooray! We found ${data.totalHits} images.`);
+    }
+    renderImages(data.hits);
+    loader.style.display = 'none';
+    error.style.display = 'none';
+    if (gallery.children.length < data.totalHits) {
+      loadMoreBtn.style.display = 'block';
     } else {
-      Notify.success(`Hooray! We found ${totalHits} images`);
-      renderGallery(hits);
+      loadMoreBtn.style.display = 'none';
+      Notiflix.Notify.info(
+        `We're sorry, but you've reached the end of search results.`
+      );
     }
-    searchInputEl.value = '';
-  } catch (e) {
-    Notify.failure(e);
+  } catch (err) {
+    console.error(err);
+    error.style.display = 'block';
+    error.textContent = `Sorry, there was an error. Please try again later.`;
+    loader.style.display = 'none';
+    loadMoreBtn.style.display = 'none';
   }
 }
 
-async function loadMore() {
-  options.params.page += 1;
-  try {
-    const res = await axios.get(BASE_URL, options);
-    const hits = res.data.hits;
-    renderGallery(hits);
-  } catch (e) {
-    Notify.failure(e);
-  }
+function renderImages(images) {
+  images.forEach(image => {
+    const photoCard = document.createElement('div');
+    photoCard.classList.add('photo-card');
+    const imgLink = document.createElement('a');
+    imgLink.href = image.largeImageURL;
+    imgLink.classList.add('gallery-item');
+    const img = document.createElement('img');
+    img.src = image.webformatURL;
+    img.alt = image.tags;
+    img.loading = 'lazy';
+    const info = document.createElement('div');
+    info.classList.add('info');
+    const likes = document.createElement('p');
+    likes.classList.add('info-item');
+    likes.innerHTML = `<b>Likes:</b> ${image.likes}`;
+    const views = document.createElement('p');
+    views.classList.add('info-item');
+    views.innerHTML = `<b>Views:</b> ${image.views}`;
+    const comments = document.createElement('p');
+    comments.classList.add('info-item');
+    comments.innerHTML = `<b>Comments:</b> ${image.comments}`;
+    const downloads = document.createElement('p');
+    downloads.classList.add('info-item');
+    downloads.innerHTML = `<b>Downloads:</b> ${image.downloads}`;
+    info.append(likes, views, comments, downloads);
+    imgLink.appendChild(img);
+    photoCard.append(imgLink, info);
+    gallery.appendChild(photoCard);
+  });
 }
-
-function handleScroll() {
-  const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-
-  if (scrollTop + clientHeight >= scrollHeight) {
-    loadMore();
-  }
-}
-
-searchFormEl.addEventListener('submit', handleSubmit);
-window.addEventListener('scroll', handleScroll);
